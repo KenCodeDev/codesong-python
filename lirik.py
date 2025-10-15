@@ -5,8 +5,10 @@ import sounddevice as sd
 import soundfile as sf
 import pyfiglet
 
-#if the lyrics don't appear, make sure the file is the song name, preferably (songname, author).mp3
-AUDIO_FILE   = "Sweather Weather.mp3"   # your song hear
+# Dapatkan path absolut ke file audio
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+AUDIO_FILE = os.path.join(SCRIPT_DIR, "music", "Sweater Weather.mp3")
+
 START_TIME   = 39  # if you want to skip in certain parts
 
 LRC_FOLDER   = os.path.expanduser("~/lyrics")
@@ -14,12 +16,23 @@ BLOCKSIZE    = 2048
 
 # if the lyrics don't sync you can manually adjust its' offset here
 # in seconds.,, positive number for backwards, negative for forwards.
-LYRIC_OFFSET = -1.7
+LYRIC_OFFSET = 5.3
 
 def check_audio_file():
     """Check if audio file exists and is readable"""
+    print(f"Looking for audio file: {AUDIO_FILE}")
+    print(f"Current working directory: {os.getcwd()}")
+    print(f"Script directory: {SCRIPT_DIR}")
+    
     if not os.path.exists(AUDIO_FILE):
         print(f"Error: Audio file '{AUDIO_FILE}' not found!")
+        print("Available files in music folder:")
+        music_dir = os.path.join(SCRIPT_DIR, "music")
+        if os.path.exists(music_dir):
+            for file in os.listdir(music_dir):
+                print(f"  - {file}")
+        else:
+            print("Music folder doesn't exist!")
         return False
     
     if not os.path.isfile(AUDIO_FILE):
@@ -29,7 +42,7 @@ def check_audio_file():
     try:
         # Try to read the file header to check if it's a valid audio file
         with sf.SoundFile(AUDIO_FILE) as f:
-            pass
+            print(f"Audio file info: {f.samplerate} Hz, {f.frames} frames, {f.channels} channels")
     except Exception as e:
         print(f"Error: Cannot read audio file '{AUDIO_FILE}': {e}")
         return False
@@ -39,6 +52,20 @@ def check_audio_file():
 
 def fetch_lrc_from_lrclib(title: str, artist: str = "") -> str | None:
     try:
+        # FORCE menggunakan ID spesifik untuk Sweater Weather
+        if "sweater weather" in title.lower() and "neighbourhood" in artist.lower():
+            # Direct fetch dengan ID yang pasti
+            r = requests.get(
+                "https://lrclib.net/api/get/9035524",  # ID spesifik ini
+                timeout=10,
+            )
+            if r.status_code == 200:
+                data = r.json()
+                if data.get("syncedLyrics"):
+                    print("🎯 Using specific Sweater Weather lyrics (ID: 9035524)")
+                    return data["syncedLyrics"]
+        
+        # Fallback ke search biasa jika bukan lagu ini
         r = requests.get(
             "https://lrclib.net/api/search",
             params={"q": f"{title} {artist}".strip()},
